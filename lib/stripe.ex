@@ -4,6 +4,7 @@ defmodule Stripe do
   """
 
   @default_api_endpoint "https://api.stripe.com/v1/"
+  @default_timeout 8_000
   @client_version Mix.Project.config[:version]
 
   def version do
@@ -40,6 +41,12 @@ defmodule Stripe do
     @default_api_endpoint
   end
 
+  defp get_timeout do
+    System.get_env("STRIPE_TIMEOUT") ||
+    Application.get_env(:stripe, :timeout) ||
+    @default_timeout
+  end
+
   defp request_url(endpoint) do
     Path.join(get_api_endpoint(), endpoint)
   end
@@ -67,7 +74,9 @@ defmodule Stripe do
   end
 
   def request(action, endpoint, data, opts) when action in [:get, :post, :delete] do
-    HTTPoison.request(action, request_url(endpoint, data), "", create_headers(opts))
+    timeout = get_timeout()
+    http_opts = [timeout: timeout, recv_timeout: timeout]
+    HTTPoison.request(action, request_url(endpoint, data), "", create_headers(opts), http_opts)
     |> handle_response
   end
 
